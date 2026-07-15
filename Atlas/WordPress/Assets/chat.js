@@ -2,22 +2,38 @@
  * Atlas KOS - Frontend Chat Widget
  */
 document.addEventListener("DOMContentLoaded", function () {
-    // 1. Extraer configuraciones de WordPress locales
+    // 1. Cargar las configuraciones dinámicas pasadas desde WordPress
     const userName = window.AtlasConfig?.userName || "";
     const titleText = window.AtlasConfig?.titleText || "Asistente Atlas";
     const headerBg = window.AtlasConfig?.headerBg || "#007cba";
     const headerTextColor = window.AtlasConfig?.headerTextColor || "#ffffff";
     const fallbackButtons = window.AtlasConfig?.fallbackButtons || [];
 
-    // 2. Selectores de la Interfaz
+    // Elementos de la interfaz (Selectores unificados)
     const chatWidget = document.getElementById("atlas-chat-widget") || document.querySelector(".atlas-chat-widget");
     const chatHeader = document.querySelector(".atlas-chat-header") || document.querySelector(".chat-header");
-    const chatMessages = document.querySelector(".atlas-chat-messages-container") || document.querySelector(".atlas-messages-list") || document.querySelector(".chat-messages");
-    const chatInput = document.querySelector(".atlas-chat-input-field") || document.querySelector(".atlas-chat-input") || document.querySelector(".chat-input input");
-    const sendButton = document.querySelector(".atlas-chat-send-btn") || document.querySelector(".atlas-send-button") || document.querySelector(".chat-input button");
+    const chatMessages = document.querySelector(".atlas-chat-messages-container") || document.querySelector(".atlas-messages-list");
+    const chatInput = document.querySelector(".atlas-chat-input-field") || document.querySelector(".chat-input input"); 
+    const sendButton = document.querySelector(".atlas-chat-send-btn") || document.querySelector(".chat-input button");
     const chatToggleBtn = document.getElementById("atlas-chat-toggle") || document.querySelector(".atlas-chat-toggle");
 
-    // Inyectar animación CSS para los puntos suspensivos ("Pensando")
+    // Aplicar estilos personalizados a la cabecera dinámicamente
+    if (chatHeader) {
+        chatHeader.style.backgroundColor = headerBg;
+        chatHeader.style.color = headerTextColor;
+        let titleElement = chatHeader.querySelector("h3") || chatHeader.querySelector(".atlas-chat-title");
+        if (!titleElement) {
+            titleElement = document.createElement("h3");
+            titleElement.style.margin = "0";
+            titleElement.style.fontSize = "16px";
+            titleElement.style.fontWeight = "bold";
+            chatHeader.appendChild(titleElement);
+        }
+        titleElement.textContent = titleText;
+        titleElement.style.color = headerTextColor;
+    }
+
+    // Inyectar animación CSS para los tres puntos suspensivos ("Pensando")
     if (!document.getElementById("atlas-blink-style")) {
         const style = document.createElement("style");
         style.id = "atlas-blink-style";
@@ -38,24 +54,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.head.appendChild(style);
     }
 
-    // 3. Aplicar colores y textos dinámicos en la cabecera
-    if (chatHeader) {
-        chatHeader.style.backgroundColor = headerBg;
-        chatHeader.style.color = headerTextColor;
-
-        let titleElement = chatHeader.querySelector("h3") || chatHeader.querySelector(".atlas-chat-title") || chatHeader.querySelector(".chat-title");
-        if (!titleElement) {
-            titleElement = document.createElement("h3");
-            titleElement.style.margin = "0";
-            titleElement.style.fontSize = "16px";
-            titleElement.style.fontWeight = "bold";
-            chatHeader.appendChild(titleElement);
-        }
-        titleElement.textContent = titleText;
-        titleElement.style.color = headerTextColor;
-    }
-
-    // 4. Función de inserción de mensajes en pantalla
+    // Función de inserción de mensajes en pantalla (Segura contra cargas rápidas)
     const appendMessage = (sender, text, htmlContent = "") => {
         if (!chatMessages) return null;
 
@@ -78,7 +77,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return msgDiv;
     };
 
-    // 5. Auxiliar para obtener el icono o imagen de las acciones comerciales
+    // Auxiliar para obtener el icono o imagen de las acciones comerciales
     const getIconHtml = (iconValue, color = '#ffffff') => {
         if (!iconValue) return "";
         if (iconValue.startsWith("http") || iconValue.includes(".") || iconValue.startsWith("/")) {
@@ -87,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return `<i data-lucide="${iconValue}" style="width:14px; height:14px; color:${color}; display:inline-block; vertical-align:middle; margin-right:5px;"></i>`;
     };
 
-    // 6. Mensaje de bienvenida inmediato y dinámico
+    // --- SALUDO INICIAL DE BIENVENIDA ---
     const sendWelcomeMessage = () => {
         if (!chatMessages) return;
         if (chatMessages.children.length > 0) return;
@@ -101,17 +100,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     sendWelcomeMessage();
 
-    // 7. Lógica de procesamiento de las respuestas
+    // --- ENVIAR MENSAJE AL CONTROLADOR (ALINEADO CON POST & ASK ENDPOINT) ---
     const handleUserMessage = async () => {
         if (!chatInput) return;
         const queryText = chatInput.value.trim();
         if (!queryText) return;
 
-        // Mostrar de inmediato la pregunta del usuario
+        // Pintar pregunta en pantalla
         appendMessage("user", queryText);
         chatInput.value = "";
 
-        // Inyectar la animación "Pensando" y guardar su referencia de manera segura
+        // Burbuja temporal de pensamiento
         const thinkingBubble = appendMessage("bot", `
             <div class="atlas-thinking" style="display:flex; align-items:center; gap:4px; height: 18px;">
                 <span style="font-style:italic; font-size:12px; color:#777;">Un momento, pensando</span>
@@ -121,47 +120,96 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
         `);
 
-        // Simulación de demora cognitiva (1.2 segundos) para realismo de la IA
+        // Delay para simular procesamiento IA
         setTimeout(async () => {
-            // Eliminar la animación antes de pintar la respuesta
             if (thinkingBubble) {
                 thinkingBubble.remove();
             }
 
             try {
-                // Obtener URL de la API de WordPress enviada por WordPressAdapter
                 const apiBase = window.AtlasConfig?.restUrl || "/wp-json/";
-                let chatUrl, askUrl;
-
-                // Soporte inteligente para URLs que contienen puertos (como localhost:10095) o enlaces simples
+                
+                // Formateamos la llamada REST según el tipo de enlaces en local
+                let askUrl;
                 if (apiBase.includes('?') || !apiBase.includes('/wp-json/')) {
                     const cleanBase = apiBase.split('?')[0];
-                    chatUrl = `${cleanBase}?rest_route=/atlas/v1/chat&query=${encodeURIComponent(queryText)}`;
-                    askUrl = `${cleanBase}?rest_route=/atlas/v1/ask&query=${encodeURIComponent(queryText)}`;
+                    askUrl = `${cleanBase}?rest_route=/atlas/v1/ask`;
                 } else {
-                    chatUrl = `${apiBase}atlas/v1/chat?query=${encodeURIComponent(queryText)}`;
-                    askUrl = `${apiBase}atlas/v1/ask?query=${encodeURIComponent(queryText)}`;
+                    askUrl = `${apiBase}atlas/v1/ask`;
                 }
 
-                // Intentamos realizar la consulta al endpoint principal /chat
-                let response = await fetch(chatUrl);
-                let data = null;
-
-                // Si devuelve un 404, probamos inteligentemente con el endpoint alternativo /ask
-                if (response.status === 404) {
-                    response = await fetch(askUrl);
-                }
+                // CORRECCIÓN CLAVE: Enviamos una petición POST con payload JSON, como espera AskController.
+                const response = await fetch(askUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        question: queryText,
+                        url: window.location.href
+                    })
+                });
 
                 if (!response.ok) {
-                    throw new Error("Error en la respuesta de la red.");
+                    throw new Error("Respuesta de servidor no satisfactoria.");
                 }
 
-                data = await response.ok ? await response.json() : null;
+                const data = await response.json();
 
-                if (data && data.found) {
-                    appendMessage("bot", data.answer);
+                // CORRECCIÓN CLAVE: Evaluamos success y leemos el campo text
+                if (data && data.success) {
+                    let actionsHtml = "";
+
+                    // Procesar la botonera comercial dinámica de forma adaptativa
+                    if (data.actions) {
+                        let primaryList = [];
+                        let secondaryAction = null;
+
+                        if (Array.isArray(data.actions)) {
+                            primaryList = data.actions;
+                        } else if (data.actions.primary_list) {
+                            primaryList = data.actions.primary_list;
+                            secondaryAction = data.actions.secondary;
+                        }
+
+                        if (primaryList.length > 0 || secondaryAction) {
+                            actionsHtml += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:10px; width:100%;">`;
+                            
+                            primaryList.forEach(btn => {
+                                const btnBg = btn.styles?.backgroundColor || headerBg;
+                                const btnColor = btn.styles?.color || '#ffffff';
+                                const iconMarkup = getIconHtml(btn.icon, btnColor);
+
+                                actionsHtml += `
+                                    <a href="${btn.url}" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; gap:6px; padding: 10px 12px; background:${btnBg}; color:${btnColor}; text-decoration:none; border-radius:50px; font-size:12px; font-weight:bold; width:100%; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
+                                        ${iconMarkup}
+                                        <span>${btn.label}</span>
+                                    </a>
+                                `;
+                            });
+
+                            if (secondaryAction) {
+                                const secBg = secondaryAction.styles?.backgroundColor || '#f0f0f1';
+                                const secColor = secondaryAction.styles?.color || '#3c434a';
+                                actionsHtml += `
+                                    <a href="${secondaryAction.url}" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; gap:6px; padding: 10px 12px; background:${secBg}; color:${secColor}; text-decoration:none; border-radius:50px; font-size:12px; font-weight:bold; width:100%; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
+                                        <span>${secondaryAction.label}</span>
+                                    </a>
+                                `;
+                            }
+                            
+                            actionsHtml += `</div>`;
+                        }
+                    }
+
+                    appendMessage("bot", data.text, actionsHtml);
+
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+
                 } else {
-                    // Si la respuesta no es encontrada, mostramos el fallback configurado
+                    // Fallback para fallbackButtons en caso de no hallar respuesta
                     let fallbackHtml = "";
 
                     if (fallbackButtons && fallbackButtons.length > 0) {
@@ -183,7 +231,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         fallbackHtml += `</div>`;
                     }
 
-                    const defaultFallbackText = (data && data.answer) || "Lo siento, no he encontrado información exacta sobre eso. ¿Te gustaría ponerte en contacto con nosotros?";
+                    const defaultFallbackText = (data && data.text) || "Lo siento, no he encontrado información exacta sobre eso. ¿Te gustaría ponerte en contacto con nosotros?";
                     appendMessage("bot", defaultFallbackText, fallbackHtml);
 
                     if (typeof lucide !== 'undefined') {
@@ -197,7 +245,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }, 1200);
     };
 
-    // 8. Asociación de eventos para el Input y Botón de envío
+    // Asociación de eventos
     if (sendButton) {
         sendButton.addEventListener("click", handleUserMessage);
     }
@@ -211,7 +259,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // 9. Evento para abrir/cerrar la ventana del chat
+    // Evento de apertura/cierre
     if (chatToggleBtn && chatWidget) {
         chatToggleBtn.addEventListener("click", function () {
             chatWidget.classList.toggle("active");

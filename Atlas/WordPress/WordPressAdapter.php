@@ -26,14 +26,14 @@ class WordPressAdapter
     }
 
     /**
-     * Amarra Atlas a los eventos y hooks globales de WordPress.
+     * Amarra Atlas a los eventos y hooks globales de WordPress en local.
      */
     public function integrate(ConversationService $conversationService, AnalyticsService $analyticsService): void
     {
         $this->conversationService = $conversationService;
         $this->analyticsService = $analyticsService;
 
-        // 1. Ciclo de Vida de Base de Datos
+        // 1. Ciclo de Vida de Base de Datos (Corregida la ruta subiendo 2 niveles para ambiente local)
         register_activation_hook(dirname(__DIR__, 2) . '/atlas.php', [MigrationRunner::class, 'run']);
 
         // 2. Inicializar el Generador de Acciones Comerciales (Metabox en posts)
@@ -45,25 +45,14 @@ class WordPressAdapter
         // 4. Encolar Assets en el frontend (Widget de Chat)
         add_action('wp_enqueue_scripts', [$this, 'enqueueChatAssets']);
 
-        // 5. Renderizar el contenedor HTML del Chat en el Footer de la Web
+        // 5. Renderizar el contenedor HTML del Chat en el Footer para ambiente local
         add_action('wp_footer', [$this, 'renderChatWidgetHtml']);
     }
 
     public function bootWordPressComponents(): void
     {
-        // Forzar la creación de tablas si no existen de manera silenciosa y segura
-        try {
-            global $wpdb;
-            $tableName = $wpdb->prefix . 'atlas_unanswered_questions';
-            if ($wpdb->get_var("SHOW TABLES LIKE '$tableName'") !== $tableName) {
-                if (class_exists('Atlas\WordPress\Hooks\MigrationRunner')) {
-                    MigrationRunner::run();
-                }
-            }
-            $this->moduleManager->bootModules();
-        } catch (\Throwable $e) {
-            error_log("Error inicializando módulos en Atlas KOS: " . $e->getMessage());
-        }
+        // Arrancamos los módulos
+        $this->moduleManager->bootModules();
 
         // Registramos el controlador de la REST API
         if ($this->conversationService) {
@@ -71,23 +60,21 @@ class WordPressAdapter
             add_action('rest_api_init', [$askController, 'registerRoutes']);
         }
 
-        // Inicializar el Menú de Administración de forma segura
-        if (class_exists('Atlas\WordPress\Admin\AdminDashboardController') && $this->analyticsService) {
+        // Inicializar el Menú de Administración
+        if ($this->analyticsService) {
             $dashboard = new AdminDashboardController($this->analyticsService);
             add_action('admin_menu', [$dashboard, 'registerMenu']);
         }
 
-        // Inicializamos la sincronización automática de contenido
-        try {
-            $documentRepo = new WordPressDocumentRepository();
-            $contentService = new ContentService($documentRepo);
-            $wpProvider = new WordPressProvider();
-            
-            $syncHandler = new ContentSyncHandler($contentService, $wpProvider);
-            add_action('save_post', [$syncHandler, 'handleSavePost'], 10, 3);
-        } catch (\Throwable $e) {
-            error_log("Error inicializando ContentSync en Atlas KOS: " . $e->getMessage());
-        }
+        // Inicializamos la sincronización automática de contenido en local
+        $documentRepo = new WordPressDocumentRepository();
+        $contentService = new ContentService($documentRepo);
+        $wpProvider = new WordPressProvider();
+        
+        $syncHandler = new ContentSyncHandler($contentService, $wpProvider);
+        
+        // Escuchamos cuando un post se crea o actualiza
+        add_action('save_post', [$syncHandler, 'handleSavePost'], 10, 3);
     }
 
     /**
@@ -97,19 +84,20 @@ class WordPressAdapter
     public function enqueueChatAssets(): void
     {
         // Encolar de manera segura chat.js buscando la raíz relativa del plugin
-        $js_url = plugins_url('../Assets/chat.js', dirname(__FILE__, 2));
+        $js_url = plugins_url('/atlas/wordpress/Assets/chat.js', dirname(__FILE__, 2));
 
         wp_enqueue_script(
             'atlas-chat-js', 
             $js_url, 
             ['jquery'], 
-            '1.7', // Forzamos actualización de caché
+            '2.2', // Incrementamos versión para romper la caché del navegador en local
             true
         );
 
-        // Obtener información del usuario logueado actualmente
+        // Obtener información del usuario logueado actualmente en WordPress
         $current_user = wp_get_current_user();
         $user_name = '';
+
         if ($current_user->ID !== 0) {
             $user_name = $current_user->first_name ?: $current_user->display_name;
         }
@@ -124,9 +112,11 @@ class WordPressAdapter
                 $action = $globalActions[$actionId];
                 $url = $action['url'];
                 
+                // Formatear WhatsApp
                 if ($action['type'] === 'whatsapp' && !empty($url) && !str_starts_with($url, 'http')) {
                     $url = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $url);
                 }
+                // Formatear Carrito WooCommerce
                 if ($action['type'] === 'cart' && !empty($url)) {
                     $productId = (int)preg_replace('/[^0-9]/', '', $url);
                     $url = home_url('/?add-to-cart=' . $productId);
@@ -144,19 +134,19 @@ class WordPressAdapter
             }
         }
 
-        // Inyectar las configuraciones dinámicas
+        // Inyectar las configuraciones dinámicas incluyendo restUrl con puerto local (:10095)
         wp_localize_script('atlas-chat-js', 'AtlasConfig', [
-            'restUrl' => esc_url_raw(rest_url()), // ◄ CLAVE: Pasa la ruta base exacta de la REST API
+            'restUrl' => esc_url_raw(rest_url()),
             'userName' => $user_name,
             'titleText' => get_option('atlas_chat_title_text', 'Asistente Atlas'),
-            'headerBg' => get_option('atlas_chat_header_bg', '#10b981'),
+            'headerBg' => get_option('atlas_chat_header_bg', '#007cba'),
             'headerTextColor' => get_option('atlas_chat_header_text_color', '#ffffff'),
             'fallbackButtons' => $fallbackButtons
         ]);
     }
 
     /**
-     * Imprime el contenedor HTML del chat en el pie de página del sitio.
+     * Imprime el contenedor HTML del chat en el pie de página del sitio en local.
      */
     public function renderChatWidgetHtml(): void
     {
@@ -166,7 +156,7 @@ class WordPressAdapter
         $headerBg = get_option('atlas_chat_header_bg', '#10b981');
         $headerTextColor = get_option('atlas_chat_header_text_color', '#ffffff');
         ?>
-        <!-- Cargar Lucide Icons para soportar iconos dinámicos vectoriales -->
+        <!-- Cargar Lucide Icons para soportar iconos vectoriales -->
         <script src="https://unpkg.com/lucide@latest"></script>
 
         <style>
@@ -262,7 +252,7 @@ class WordPressAdapter
             </div>
             <div class="atlas-chat-messages-container"></div>
             <div class="atlas-chat-input-container">
-                <input type="text" class="atlas-chat-input-field" placeholder="Pregúntame algo..." value="" />
+                <input type="text" class="atlas-chat-input-field" placeholder="Escribe tu mensaje aquí..." value="" />
                 <button class="atlas-chat-send-btn">
                     <i data-lucide="send" style="width: 18px; height: 18px;"></i>
                 </button>
