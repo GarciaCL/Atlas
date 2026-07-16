@@ -19,31 +19,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const sendButton = document.querySelector(".atlas-chat-send-btn") || document.querySelector(".chat-input button");
     const chatToggleBtn = document.getElementById("atlas-chat-toggle") || document.querySelector(".atlas-chat-toggle");
 
-    // --- SISTEMA DE PROTECCIÓN ACTIVA (ANTI-REMOVAL DE BRANDING) ---
+    // --- SISTEMA DE PROTECCIÓN ACTIVA (ANTI-REMOVAL DE BRANDING INTERNO) ---
     const _verifyBrandingIntegrity = () => {
-        const extLink = document.querySelector(".atlas-branding-link");
         const intLink = document.querySelector(".atlas-branding-link-inner");
         let isViolated = false;
 
-        // 1. Validar enlace externo flotante debajo de la burbuja
-        if (!extLink) {
-            isViolated = true;
-        } else {
-            const href = extLink.getAttribute("href");
-            const text = extLink.textContent.toLowerCase();
-            const style = window.getComputedStyle(extLink);
-
-            if (href !== "https://creactivaweb.cl" || 
-                !text.includes("creactivaweb.cl") || 
-                style.display === "none" || 
-                style.visibility === "hidden" || 
-                parseFloat(style.opacity) === 0 || 
-                style.height === "0px") {
-                isViolated = true;
-            }
-        }
-
-        // 2. Validar enlace interno dentro del pie del chatbox
+        // Validar únicamente el enlace interno dentro del pie del chatbox (Más estético)
         if (!intLink) {
             isViolated = true;
         } else {
@@ -60,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        // 3. Ejecutar acción de bloqueo de funciones si hay adulteración
+        // Ejecutar acción de bloqueo de funciones si hay adulteración
         if (isViolated) {
             if (chatInput) {
                 chatInput.disabled = true;

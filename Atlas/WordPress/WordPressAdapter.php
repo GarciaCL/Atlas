@@ -82,13 +82,13 @@ class WordPressAdapter
     public function enqueueChatAssets(): void
     {
         // Encolar assets de forma segura en local
-        $js_url = plugins_url('/atlas/wordpress/Assets/chat.js', dirname(__FILE__, 2));
+        $js_url = plugins_url('atlas/wordpress/Assets/chat.js', dirname(__FILE__, 2));
 
         wp_enqueue_script(
             'atlas-chat-js', 
             $js_url, 
             ['jquery'], 
-            '2.6', // Nueva versión para forzar refresco total en la caché local
+            '2.7', // Incrementamos la versión para forzar refresco total en la caché local
             true
         );
 
@@ -184,19 +184,6 @@ class WordPressAdapter
             #atlas-chat-toggle:hover {
                 transform: scale(1.05);
             }
-            .atlas-branding-link {
-                font-size: 9px;
-                color: #888;
-                text-decoration: none;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                margin-top: 5px;
-                text-shadow: 0 1px 1px rgba(255,255,255,0.8);
-                font-weight: 600;
-            }
-            .atlas-branding-link:hover {
-                color: #333;
-                text-decoration: underline;
-            }
             #atlas-chat-widget {
                 position: fixed;
                 bottom: 90px;
@@ -253,7 +240,7 @@ class WordPressAdapter
             }
         </style>
 
-        <!-- Botón Flotante para abrir/cerrar con Marca de Creactiva Web -->
+        <!-- Botón Flotante para abrir/cerrar (Limpio, sin atribución externa ruidosa) -->
         <div id="atlas-chat-toggle-wrapper">
             <div id="atlas-chat-toggle">
                 <?php if (filter_var($chatIcon, FILTER_VALIDATE_URL) || str_starts_with($chatIcon, '/')): ?>
@@ -262,8 +249,6 @@ class WordPressAdapter
                     <i data-lucide="<?php echo esc_attr($chatIcon); ?>" style="width: 26px; height: 26px;"></i>
                 <?php endif; ?>
             </div>
-            <!-- Enlace de marca externa obligado (Bajo control de chat.js) -->
-            <a href="https://creactivaweb.cl" target="_blank" class="atlas-branding-link">creado por creactivaweb.cl</a>
         </div>
 
         <!-- Ventana del Chat -->

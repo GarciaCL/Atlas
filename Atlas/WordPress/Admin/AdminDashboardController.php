@@ -21,7 +21,7 @@ class AdminDashboardController
             'manage_options',
             'atlas-kos',
             [$this, 'renderDashboard'],
-            'dashicons-brain',
+            'dashicons-format-status',
             25
         );
 
@@ -350,7 +350,7 @@ class AdminDashboardController
                                 <td style="font-weight:600; padding:12px;"><?php echo esc_html($action['name']); ?></td>
                                 <td style="padding:12px;"><span class="badge" style="background:#f1f1f1; padding:3px 8px; border-radius:10px; font-size:11px;"><?php echo esc_html($action['type']); ?></span></td>
                                 <td style="padding:12px;">
-                                    <span style="display:inline-flex; align-items:center; justify-content:center; gap:5px; padding: 6px 14px; background: <?php echo esc_attr($action['color']); ?>; color: <?php echo esc_attr($textColor); ?>; border-radius: 4px; font-size: 11px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                    <span style="display:inline-flex; align-items:center; justify-content:center; gap:5px; padding: 6px 14px; background: <?php echo esc_attr($action['color']); ?>; color: <?php echo esc_attr($textColor); ?>; border-radius: 4px; font-size: 11px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: bold;">
                                         <?php echo $iconHtml; ?>
                                         <?php echo esc_html($action['label']); ?>
                                     </span>
