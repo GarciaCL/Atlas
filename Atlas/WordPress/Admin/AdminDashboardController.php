@@ -55,8 +55,8 @@ class AdminDashboardController
 
     public function renderDashboard(): void
     {
-        // CORRECCIÓN: Llamamos al método correcto del repositorio/servicio
-        $gaps = $this->analyticsService->getTopUnansweredQuestions(15);
+        // CORRECCIÓN: Llamamos al método expuesto en el AnalyticsService de Dominio
+        $gaps = $this->analyticsService->getCriticalGaps(15);
         ?>
         <div class="wrap">
             <h1 style="font-weight: 800; margin-bottom: 5px;">🧠 Analíticas Atlas KOS</h1>

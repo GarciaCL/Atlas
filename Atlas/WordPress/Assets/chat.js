@@ -175,6 +175,18 @@ document.addEventListener("DOMContentLoaded", function () {
                         if (primaryList.length > 0 || secondaryAction) {
                             actionsHtml += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:10px; width:100%;">`;
                             
+                            // ◄ MODIFICACIÓN: Renderizamos primero el botón secundario (Leer Artículo)
+                            if (secondaryAction) {
+                                const secBg = secondaryAction.styles?.backgroundColor || '#f0f0f1';
+                                const secColor = secondaryAction.styles?.color || '#3c434a';
+                                actionsHtml += `
+                                    <a href="${secondaryAction.url}" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; gap:6px; padding: 10px 12px; background:${secBg}; color:${secColor}; text-decoration:none; border-radius:50px; font-size:12px; font-weight:bold; width:100%; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
+                                        <span>${secondaryAction.label}</span>
+                                    </a>
+                                `;
+                            }
+
+                            // ◄ MODIFICACIÓN: Renderizamos después los botones de la lista principal
                             primaryList.forEach(btn => {
                                 const btnBg = btn.styles?.backgroundColor || headerBg;
                                 const btnColor = btn.styles?.color || '#ffffff';
@@ -187,16 +199,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                     </a>
                                 `;
                             });
-
-                            if (secondaryAction) {
-                                const secBg = secondaryAction.styles?.backgroundColor || '#f0f0f1';
-                                const secColor = secondaryAction.styles?.color || '#3c434a';
-                                actionsHtml += `
-                                    <a href="${secondaryAction.url}" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; gap:6px; padding: 10px 12px; background:${secBg}; color:${secColor}; text-decoration:none; border-radius:50px; font-size:12px; font-weight:bold; width:100%; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1); box-sizing: border-box;">
-                                        <span>${secondaryAction.label}</span>
-                                    </a>
-                                `;
-                            }
                             
                             actionsHtml += `</div>`;
                         }
