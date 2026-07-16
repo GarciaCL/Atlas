@@ -21,7 +21,7 @@ class AdminDashboardController
             'manage_options',
             'atlas-kos',
             [$this, 'renderDashboard'],
-            'dashicons-admin-site',
+            'dashicons-brain',
             25
         );
 
@@ -49,13 +49,12 @@ class AdminDashboardController
     public function enqueueAdminAssets(): void
     {
         wp_enqueue_media();
-        // Cargamos la librería de Lucide Icons para renderizar los iconos en la tabla de administración
         wp_enqueue_script('lucide-icons', 'https://unpkg.com/lucide@latest', [], null, true);
     }
 
     public function renderDashboard(): void
     {
-        // CORRECCIÓN: Llamamos al método expuesto en el AnalyticsService de Dominio
+        // Llamada correcta al servicio local (getCriticalGaps) para resolver el Fatal Error de PHP
         $gaps = $this->analyticsService->getCriticalGaps(15);
         ?>
         <div class="wrap">
@@ -101,35 +100,35 @@ class AdminDashboardController
         $chatIconColor = get_option('atlas_chat_icon_color', '#ffffff');
         $chatIcon = get_option('atlas_chat_icon', 'message-square');
         $chatTitleText = get_option('atlas_chat_title_text', 'Asistente Atlas');
+        $chatHeaderLogo = get_option('atlas_chat_header_logo', '');
+        $chatShowTitle = get_option('atlas_chat_show_title', 'yes');
         $chatHeaderBg = get_option('atlas_chat_header_bg', '#007cba');
         $chatHeaderTextColor = get_option('atlas_chat_header_text_color', '#ffffff');
-        $chatHeaderLogo = get_option('atlas_chat_header_logo', ''); // ◄ NUEVO
-        $chatShowTitle = get_option('atlas_chat_show_title', 'yes'); // ◄ NUEVO
         $globalActions = get_option('atlas_global_actions', []);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_admin_referer('atlas_settings_nonce_action', 'atlas_settings_nonce')) {
             
-            // Guardar Burbuja de Chat
+            // Guardar Burbuja de Chat y Aspecto Visual
             if (isset($_POST['atlas_save_general_settings'])) {
                 update_option('atlas_chat_color', sanitize_hex_color($_POST['atlas_chat_color']));
                 update_option('atlas_chat_icon_color', sanitize_hex_color($_POST['atlas_chat_icon_color']));
                 update_option('atlas_chat_icon', sanitize_text_field($_POST['atlas_chat_icon']));
                 update_option('atlas_chat_title_text', sanitize_text_field($_POST['atlas_chat_title_text']));
+                update_option('atlas_chat_header_logo', esc_url_raw($_POST['atlas_chat_header_logo']));
+                update_option('atlas_chat_show_title', sanitize_text_field($_POST['atlas_chat_show_title']));
                 update_option('atlas_chat_header_bg', sanitize_hex_color($_POST['atlas_chat_header_bg']));
                 update_option('atlas_chat_header_text_color', sanitize_hex_color($_POST['atlas_chat_header_text_color']));
-                update_option('atlas_chat_header_logo', sanitize_text_field($_POST['atlas_chat_header_logo'])); // ◄ NUEVO
-                update_option('atlas_chat_show_title', sanitize_text_field($_POST['atlas_chat_show_title'])); // ◄ NUEVO
-                
+
                 $chatColor = sanitize_hex_color($_POST['atlas_chat_color']);
                 $chatIconColor = sanitize_hex_color($_POST['atlas_chat_icon_color']);
                 $chatIcon = sanitize_text_field($_POST['atlas_chat_icon']);
                 $chatTitleText = sanitize_text_field($_POST['atlas_chat_title_text']);
+                $chatHeaderLogo = esc_url_raw($_POST['atlas_chat_header_logo']);
+                $chatShowTitle = sanitize_text_field($_POST['atlas_chat_show_title']);
                 $chatHeaderBg = sanitize_hex_color($_POST['atlas_chat_header_bg']);
                 $chatHeaderTextColor = sanitize_hex_color($_POST['atlas_chat_header_text_color']);
-                $chatHeaderLogo = sanitize_text_field($_POST['atlas_chat_header_logo']); // ◄ NUEVO
-                $chatShowTitle = sanitize_text_field($_POST['atlas_chat_show_title']); // ◄ NUEVO
-                
-                echo '<div class="notice notice-success is-dismissible"><p>Estilo general del chat actualizado correctamente.</p></div>';
+
+                echo '<div class="notice notice-success is-dismissible"><p>Aspecto visual e identidad de Atlas actualizados con éxito.</p></div>';
             }
 
             // Crear Acción Comercial
@@ -175,47 +174,11 @@ class AdminDashboardController
                 if (isset($globalActions[$deleteId])) {
                     unset($globalActions[$deleteId]);
                     update_option('atlas_global_actions', $globalActions);
-                    echo '<div class="notice notice-warning is-dismissible"><p>Acción comercial eliminada globalmente.</p></div>';
+                    echo '<div class="notice notice-warning is-dismissible"><p>Acción comercial eliminada de forma global.</p></div>';
                 }
             }
         }
         ?>
-        <style>
-            .atlas-modal {
-                display: none; 
-                position: fixed; 
-                z-index: 99999; 
-                left: 0; 
-                top: 0; 
-                width: 100%; 
-                height: 100%; 
-                overflow: auto; 
-                background-color: rgba(0,0,0,0.5);
-            }
-            .atlas-modal-content {
-                background-color: #fefefe;
-                margin: 7% auto; 
-                padding: 25px; 
-                border: 1px solid #888;
-                width: 50%;
-                min-width: 450px;
-                border-radius: 6px;
-                position: relative;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.25);
-            }
-            .atlas-close-modal {
-                color: #aaa;
-                float: right;
-                font-size: 28px;
-                font-weight: bold;
-                cursor: pointer;
-                line-height: 20px;
-            }
-            .atlas-close-modal:hover {
-                color: #000;
-            }
-        </style>
-
         <div class="wrap">
             <h1 style="font-weight: 800; margin-bottom: 5px;">⚙️ Ajustes y Personalización de Atlas</h1>
             <p class="description" style="font-size: 14px; margin-bottom: 25px;">Configura la apariencia y crea la botonera comercial para tus páginas y flujos transaccionales.</p>
@@ -225,70 +188,72 @@ class AdminDashboardController
             <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 25px;">
                 
                 <!-- SECCIÓN 1: BURBUJA FLOTANTE -->
-                <div class="card" style="flex: 1; min-width: 320px; padding: 25px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+                <div class="card" style="flex: 1.1; min-width: 340px; padding: 25px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
                     <h3 style="margin-top:0; border-bottom: 1px solid #eee; padding-bottom: 10px; font-weight: 700;">🎨 Burbuja de Chat</h3>
                     <form method="post" action="">
                         <?php wp_nonce_field('atlas_settings_nonce_action', 'atlas_settings_nonce'); ?>
                         
-                        <!-- Ajustes de Título combinados -->
-                        <p style="margin-bottom: 15px;">
-                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Título de Cabecera:</label>
-                            <input type="text" name="atlas_chat_title_text" value="<?php echo esc_attr($chatTitleText); ?>" style="width:100%; padding: 6px;" placeholder="Ej: Soporte Atlas">
-                        </p>
-
-                        <p style="margin-bottom: 15px;">
-                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Mostrar Título:</label>
-                            <select name="atlas_chat_show_title" style="width:100%;">
-                                <option value="yes" <?php selected($chatShowTitle, 'yes'); ?>>Sí, mostrar texto</option>
-                                <option value="no" <?php selected($chatShowTitle, 'no'); ?>>No, ocultar texto</option>
-                            </select>
-                        </p>
-
-                        <!-- Subida de Logo Corporativo para Cabecera -->
-                        <p style="margin-bottom: 15px;">
-                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Logotipo de Cabecera:</label>
-                            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                                <input type="text" id="atlas_chat_header_logo" name="atlas_chat_header_logo" value="<?php echo esc_attr($chatHeaderLogo); ?>" style="flex:1; padding: 6px;" placeholder="URL del logotipo">
-                                <button type="button" class="button atlas-upload-button" data-target="atlas_chat_header_logo">Subir Logo</button>
-                            </div>
-                            <span class="description" style="font-size:11px; display:block; line-height: 1.4;">
-                                💡 Sube el imagotipo de tu empresa para que aparezca al lado del título en el chat.
-                            </span>
-                        </p>
-
                         <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                             <p style="margin: 0; flex: 1;">
                                 <label style="font-weight:bold; display:block; margin-bottom:5px;">Color de Identidad:</label>
-                                <input type="color" name="atlas_chat_color" value="<?php echo esc_attr($chatColor); ?>" style="width: 50px; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
+                                <input type="color" name="atlas_chat_color" value="<?php echo esc_attr($chatColor); ?>" style="width: 100%; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
                             </p>
                             <p style="margin: 0; flex: 1;">
-                                <label style="font-weight:bold; display:block; margin-bottom:5px;">Color del Icono:</label>
-                                <input type="color" name="atlas_chat_icon_color" value="<?php echo esc_attr($chatIconColor); ?>" style="width: 50px; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
+                                <label style="font-weight:bold; display:block; margin-bottom:5px;">Fondo Cabecera:</label>
+                                <input type="color" name="atlas_chat_header_bg" value="<?php echo esc_attr($chatHeaderBg); ?>" style="width: 100%; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
+                            </p>
+                            <p style="margin: 0; flex: 1;">
+                                <label style="font-weight:bold; display:block; margin-bottom:5px;">Texto Cabecera:</label>
+                                <input type="color" name="atlas_chat_header_text_color" value="<?php echo esc_attr($chatHeaderTextColor); ?>" style="width: 100%; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
                             </p>
                         </div>
-                        
-                        <p style="margin-bottom: 15px;">
-                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Color de Fondo Cabecera:</label>
-                            <input type="color" name="atlas_chat_header_bg" value="<?php echo esc_attr($chatHeaderBg); ?>" style="width: 50px; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
-                        </p>
 
                         <p style="margin-bottom: 15px;">
-                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Color de Texto de Cabecera:</label>
-                            <input type="color" name="atlas_chat_header_text_color" value="<?php echo esc_attr($chatHeaderTextColor); ?>" style="width: 50px; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
+                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Título del Asistente:</label>
+                            <input type="text" name="atlas_chat_title_text" value="<?php echo esc_attr($chatTitleText); ?>" style="width:100%; padding: 6px;" placeholder="Ej: Soporte Atlas">
                         </p>
+
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: center;">
+                            <p style="margin: 0; flex: 1.5;">
+                                <label style="font-weight:bold; display:block; margin-bottom:5px;">Logo Corporativo Cabecera:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="atlas_chat_header_logo" name="atlas_chat_header_logo" value="<?php echo esc_attr($chatHeaderLogo); ?>" style="flex:1; padding: 6px;" placeholder="URL de imagen">
+                                    <button type="button" class="button atlas-upload-button" data-target="atlas_chat_header_logo">Subir</button>
+                                </div>
+                            </p>
+                            <p style="margin: 0; flex: 1;">
+                                <label style="font-weight:bold; display:block; margin-bottom:5px;">Mostrar Título:</label>
+                                <select name="atlas_chat_show_title" style="width:100%; height: 30px;">
+                                    <option value="yes" <?php selected($chatShowTitle, 'yes'); ?>>Mostrar</option>
+                                    <option value="no" <?php selected($chatShowTitle, 'no'); ?>>Ocultar (Solo Logo)</option>
+                                </select>
+                            </p>
+                        </div>
 
                         <p style="margin-bottom: 15px;">
                             <label style="font-weight:bold; display:block; margin-bottom:5px;">Icono de la Burbuja:</label>
                             <div style="display: flex; gap: 5px; margin-bottom: 5px;">
                                 <input type="text" id="atlas_chat_icon" name="atlas_chat_icon" value="<?php echo esc_attr($chatIcon); ?>" style="flex:1; padding: 6px;" placeholder="Ej: message-square o URL de imagen">
-                                <button type="button" class="button atlas-upload-button" data-target="atlas_chat_icon">Subir Icono</button>
+                                <button type="button" class="button atlas-upload-button" data-target="atlas_chat_icon">Subir</button>
                             </div>
-                            <span class="description" style="font-size:11px; display:block; line-height: 1.4;">
-                                💡 Escribe el nombre de un icono de <a href="https://lucide.dev/icons" target="_blank" style="font-weight: bold; color: #007cba;">Lucide Icons</a> o sube tu logo.
-                            </span>
                         </p>
+
+                        <!-- SECCIÓN EXCLUSIVA DE ATRIBUCIÓN / BRANDING PREMIUM -->
+                        <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px; background: #fffcf6; padding: 12px; border-radius: 4px; border: 1px solid #f9f2e8;">
+                            <label style="font-weight:bold; display:flex; align-items:center; gap: 8px; margin-bottom:5px; color: #333; cursor: not-allowed;">
+                                <input type="checkbox" name="atlas_branding_remove" disabled style="margin:0; cursor: not-allowed;">
+                                <span>Remover marca de desarrollador</span>
+                            </label>
+                            <span class="description" style="font-size:11px; display:block; color: #c0392b; font-weight: bold; line-height: 1.4;">
+                                🔒 Característica Premium: Mantener desactivada la atribución de "creactivaweb.cl" requiere una clave de licencia válida.
+                            </span>
+                            <span class="description" style="font-size:10px; display:block; margin-top:6px; color:#666;">
+                                ⚠️ Nota: Eliminar o forzar la ocultación del enlace en los estilos bloqueará las respuestas cognitivas en el frontend de forma automática.
+                            </span>
+                        </div>
+
                         <p style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
-                            <input type="submit" name="atlas_save_general_settings" class="button button-secondary" value="Guardar Aspecto Chat">
+                            <input type="submit" name="atlas_save_general_settings" class="button button-secondary" style="width:100%;" value="Guardar Ajustes de Burbuja">
                         </p>
                     </form>
                 </div>
@@ -385,7 +350,7 @@ class AdminDashboardController
                                 <td style="font-weight:600; padding:12px;"><?php echo esc_html($action['name']); ?></td>
                                 <td style="padding:12px;"><span class="badge" style="background:#f1f1f1; padding:3px 8px; border-radius:10px; font-size:11px;"><?php echo esc_html($action['type']); ?></span></td>
                                 <td style="padding:12px;">
-                                    <span style="display:inline-flex; align-items:center; justify-content:center; gap:5px; padding: 6px 14px; background: <?php echo esc_attr($action['color']); ?>; color: <?php echo esc_attr($textColor); ?>; border-radius: 4px; font-size: 11px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); ">
+                                    <span style="display:inline-flex; align-items:center; justify-content:center; gap:5px; padding: 6px 14px; background: <?php echo esc_attr($action['color']); ?>; color: <?php echo esc_attr($textColor); ?>; border-radius: 4px; font-size: 11px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                                         <?php echo $iconHtml; ?>
                                         <?php echo esc_html($action['label']); ?>
                                     </span>
@@ -475,12 +440,10 @@ class AdminDashboardController
 
         <script type="text/javascript">
             jQuery(document).ready(function($){
-                // Forzar inicialización de iconos de Lucide en la tabla administrativa
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
                 }
 
-                // Lógica de cambio dinámico de placeholders en "Crear Acción"
                 $('#atlas_action_type').change(function() {
                     var type = $(this).val();
                     if (type === 'cart') {
@@ -495,7 +458,6 @@ class AdminDashboardController
                     }
                 }).trigger('change');
 
-                // Lógica de cambio dinámico de placeholders en "Editar Acción" (Modal)
                 $('#edit_action_type').change(function() {
                     var type = $(this).val();
                     if (type === 'cart') {
@@ -510,7 +472,6 @@ class AdminDashboardController
                     }
                 });
 
-                // Control del cargador de medios multimedia de WordPress
                 $(document).on('click', '.atlas-upload-button', function(e) {
                     e.preventDefault();
                     var button = $(this);
@@ -531,14 +492,11 @@ class AdminDashboardController
                     mediaUploader.open();
                 });
 
-                // --- LÓGICA DEL MODAL DE EDICIÓN ---
                 var modal = $('#atlasEditModal');
 
-                // Abrir el modal y cargar la información correspondiente
                 $('.atlas-edit-trigger').click(function() {
                     var rawData = $(this).data('action');
                     
-                    // Cargar datos en los inputs del modal
                     $('#edit_action_id').val(rawData.id);
                     $('#edit_action_name').val(rawData.name);
                     $('#edit_action_type').val(rawData.type).trigger('change');
@@ -551,12 +509,10 @@ class AdminDashboardController
                     modal.fadeIn(200);
                 });
 
-                // Funciones para cerrar el modal
                 $('.atlas-close-modal, .atlas-close-modal-btn').click(function() {
                     modal.fadeOut(200);
                 });
 
-                // Cerrar modal al hacer clic fuera del contenedor blanco
                 $(window).click(function(event) {
                     if (event.target == modal[0]) {
                         modal.fadeOut(200);

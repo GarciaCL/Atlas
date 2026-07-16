@@ -2,9 +2,11 @@
  * Atlas KOS - Frontend Chat Widget
  */
 document.addEventListener("DOMContentLoaded", function () {
-    // 1. Cargar las configuraciones dinámicas pasadas desde WordPress
+    // 1. Cargar las configuraciones dinámicas de WordPress locales de forma segura
     const userName = window.AtlasConfig?.userName || "";
     const titleText = window.AtlasConfig?.titleText || "Asistente Atlas";
+    const headerLogo = window.AtlasConfig?.headerLogo || "";
+    const showTitle = window.AtlasConfig?.showTitle || "yes";
     const headerBg = window.AtlasConfig?.headerBg || "#007cba";
     const headerTextColor = window.AtlasConfig?.headerTextColor || "#ffffff";
     const fallbackButtons = window.AtlasConfig?.fallbackButtons || [];
@@ -17,38 +19,107 @@ document.addEventListener("DOMContentLoaded", function () {
     const sendButton = document.querySelector(".atlas-chat-send-btn") || document.querySelector(".chat-input button");
     const chatToggleBtn = document.getElementById("atlas-chat-toggle") || document.querySelector(".atlas-chat-toggle");
 
-    // Aplicar estilos personalizados a la cabecera dinámicamente
+    // --- SISTEMA DE PROTECCIÓN ACTIVA (ANTI-REMOVAL DE BRANDING) ---
+    const _verifyBrandingIntegrity = () => {
+        const extLink = document.querySelector(".atlas-branding-link");
+        const intLink = document.querySelector(".atlas-branding-link-inner");
+        let isViolated = false;
+
+        // 1. Validar enlace externo flotante debajo de la burbuja
+        if (!extLink) {
+            isViolated = true;
+        } else {
+            const href = extLink.getAttribute("href");
+            const text = extLink.textContent.toLowerCase();
+            const style = window.getComputedStyle(extLink);
+
+            if (href !== "https://creactivaweb.cl" || 
+                !text.includes("creactivaweb.cl") || 
+                style.display === "none" || 
+                style.visibility === "hidden" || 
+                parseFloat(style.opacity) === 0 || 
+                style.height === "0px") {
+                isViolated = true;
+            }
+        }
+
+        // 2. Validar enlace interno dentro del pie del chatbox
+        if (!intLink) {
+            isViolated = true;
+        } else {
+            const href = intLink.getAttribute("href");
+            const text = intLink.textContent.toLowerCase();
+            const style = window.getComputedStyle(intLink);
+
+            if (href !== "https://creactivaweb.cl" || 
+                !text.includes("creactivaweb.cl") || 
+                style.display === "none" || 
+                style.visibility === "hidden" || 
+                parseFloat(style.opacity) === 0) {
+                isViolated = true;
+            }
+        }
+
+        // 3. Ejecutar acción de bloqueo de funciones si hay adulteración
+        if (isViolated) {
+            if (chatInput) {
+                chatInput.disabled = true;
+                chatInput.value = "";
+                chatInput.placeholder = "Chat bloqueado: Falta licencia Premium";
+                chatInput.style.backgroundColor = "#ffebeb";
+                chatInput.style.color = "#d63638";
+                chatInput.style.borderColor = "#ffa39e";
+            }
+            if (sendButton) {
+                sendButton.disabled = true;
+                sendButton.style.opacity = "0.5";
+                sendButton.style.cursor = "not-allowed";
+            }
+            
+            // Reemplazar bandeja de mensajes por un banner de error de licencia
+            if (chatMessages && !chatMessages.querySelector(".atlas-branding-violation-alert")) {
+                chatMessages.innerHTML = `
+                    <div class="atlas-branding-violation-alert" style="background:#fff1f0; border:1px solid #ffa39e; color:#cf1322; padding:18px; border-radius:8px; margin:10px; font-size:12px; font-family:sans-serif; line-height:1.5;">
+                        <strong style="font-size:13px; display:block; margin-bottom:6px;">⚠️ Error de Licencia de Software:</strong>
+                        El sistema de chat Atlas KOS se ha bloqueado automáticamente debido a la eliminación o modificación no autorizada de la atribución obligatoria del desarrollador (<strong>creactivaweb.cl</strong>) requerida para la versión gratuita.
+                        <br><br>
+                        Por favor, restaure el enlace intacto o adquiera una versión de licencia Premium para desbloquear la funcionalidad de inteligencia artificial.
+                    </div>
+                `;
+            }
+            return false;
+        }
+        return true;
+    };
+
+    // Aplicar estilos personalizados a la cabecera, logotipo y botón minimizar
     if (chatHeader) {
         chatHeader.style.backgroundColor = headerBg;
         chatHeader.style.color = headerTextColor;
         chatHeader.style.display = "flex";
         chatHeader.style.alignItems = "center";
         chatHeader.style.justifyContent = "space-between";
-        chatHeader.style.padding = "10px 15px";
-        chatHeader.style.boxSizing = "border-box";
+        chatHeader.innerHTML = ""; // Limpiar marcado por defecto
 
-        // Contenedor de Identidad (Logo + Texto)
-        const brandContainer = document.createElement("div");
+        let brandContainer = document.createElement("div");
         brandContainer.style.display = "flex";
         brandContainer.style.alignItems = "center";
-        brandContainer.style.gap = "8px";
+        brandContainer.style.gap = "10px";
 
-        // 1. Renderizar Logo de Empresa si existe
-        const headerLogo = window.AtlasConfig?.headerLogo || "";
+        // Renderizar logo si se configuró
         if (headerLogo) {
-            const logoImg = document.createElement("img");
+            let logoImg = document.createElement("img");
             logoImg.src = headerLogo;
-            logoImg.style.width = "24px";
-            logoImg.style.height = "24px";
+            logoImg.style.width = "28px";
+            logoImg.style.height = "28px";
             logoImg.style.borderRadius = "4px";
-            logoImg.style.objectFit = "contain";
+            logoImg.style.objectFit = "cover";
             brandContainer.appendChild(logoImg);
         }
 
-        // 2. Renderizar Título si está activo
-        const showTitle = window.AtlasConfig?.showTitle !== "no";
-        if (showTitle) {
-            const titleElement = document.createElement("h3");
+        // Mostrar texto de título si está configurado
+        if (showTitle === "yes") {
+            let titleElement = document.createElement("h3");
             titleElement.style.margin = "0";
             titleElement.style.fontSize = "15px";
             titleElement.style.fontWeight = "bold";
@@ -57,35 +128,29 @@ document.addEventListener("DOMContentLoaded", function () {
             brandContainer.appendChild(titleElement);
         }
 
-        // Limpiar cabecera e inyectar marca
-        chatHeader.innerHTML = "";
         chatHeader.appendChild(brandContainer);
 
-        // 3. Renderizar Botón de Minimizar
-        const minimizeBtn = document.createElement("button");
-        minimizeBtn.id = "atlas-chat-minimize";
+        // Agregar botón de minimizar nativo
+        let minimizeBtn = document.createElement("button");
+        minimizeBtn.className = "atlas-minimize-btn";
         minimizeBtn.style.background = "none";
         minimizeBtn.style.border = "none";
         minimizeBtn.style.color = headerTextColor;
         minimizeBtn.style.cursor = "pointer";
+        minimizeBtn.style.padding = "5px";
         minimizeBtn.style.display = "flex";
         minimizeBtn.style.alignItems = "center";
-        minimizeBtn.style.padding = "4px";
         minimizeBtn.innerHTML = `<i data-lucide="minus" style="width: 18px; height: 18px;"></i>`;
+        
         chatHeader.appendChild(minimizeBtn);
 
-        // Evento para cerrar/minimizar el chat
+        // Evento Minimizar para cerrar la ventana con elegancia
         minimizeBtn.addEventListener("click", function (e) {
             e.stopPropagation();
             if (chatWidget) {
-                chatWidget.classList.remove("active", "open");
                 chatWidget.style.display = "none";
             }
         });
-
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
     }
 
     // Inyectar animación CSS para los tres puntos suspensivos ("Pensando")
@@ -153,10 +218,15 @@ document.addEventListener("DOMContentLoaded", function () {
         appendMessage("bot", greeting);
     };
 
-    sendWelcomeMessage();
+    if (_verifyBrandingIntegrity()) {
+        sendWelcomeMessage();
+    }
 
     // --- ENVIAR MENSAJE AL CONTROLADOR (ALINEADO CON POST & ASK ENDPOINT) ---
     const handleUserMessage = async () => {
+        // Validación obligatoria antes de enviar datos
+        if (!_verifyBrandingIntegrity()) return;
+
         if (!chatInput) return;
         const queryText = chatInput.value.trim();
         if (!queryText) return;
@@ -165,7 +235,7 @@ document.addEventListener("DOMContentLoaded", function () {
         appendMessage("user", queryText);
         chatInput.value = "";
 
-        // Burbuja temporal de pensamiento
+        // Burbuja de pensamiento
         const thinkingBubble = appendMessage("bot", `
             <div class="atlas-thinking" style="display:flex; align-items:center; gap:4px; height: 18px;">
                 <span style="font-style:italic; font-size:12px; color:#777;">Un momento, pensando</span>
@@ -193,7 +263,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     askUrl = `${apiBase}atlas/v1/ask`;
                 }
 
-                // CORRECCIÓN CLAVE: Enviamos una petición POST con payload JSON, como espera AskController.
+                // Petición POST con JSON
                 const response = await fetch(askUrl, {
                     method: "POST",
                     headers: {
@@ -211,11 +281,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 const data = await response.json();
 
-                // CORRECCIÓN CLAVE: Evaluamos success y leemos el campo text
                 if (data && data.success) {
                     let actionsHtml = "";
 
-                    // Procesar la botonera comercial dinámica de forma adaptativa
+                    // Procesar la botonera de acciones comerciales
                     if (data.actions) {
                         let primaryList = [];
                         let secondaryAction = null;
@@ -230,7 +299,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         if (primaryList.length > 0 || secondaryAction) {
                             actionsHtml += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:10px; width:100%;">`;
                             
-                            // ◄ MODIFICACIÓN: Renderizamos primero el botón secundario (Leer Artículo)
+                            // ORDEN PREFERENTE: Renderizar la acción secundaria (Artículo) de primero
                             if (secondaryAction) {
                                 const secBg = secondaryAction.styles?.backgroundColor || '#f0f0f1';
                                 const secColor = secondaryAction.styles?.color || '#3c434a';
@@ -241,7 +310,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 `;
                             }
 
-                            // ◄ MODIFICACIÓN: Renderizamos después los botones de la lista principal
+                            // Luego renderizar las acciones de lista principal (WhatsApp, Carro, etc.)
                             primaryList.forEach(btn => {
                                 const btnBg = btn.styles?.backgroundColor || headerBg;
                                 const btnColor = btn.styles?.color || '#ffffff';
@@ -316,9 +385,11 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Evento de apertura/cierre
+    // Apertura y Cierre
     if (chatToggleBtn && chatWidget) {
         chatToggleBtn.addEventListener("click", function () {
+            if (!_verifyBrandingIntegrity()) return; // Detener apertura si se modificó el enlace
+
             chatWidget.classList.toggle("active");
             chatWidget.classList.toggle("open");
             
@@ -330,4 +401,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
+    // HILO DE VALIDACIÓN ACTIVA (Escanea el DOM cada 3.5 segundos contra alteración de estilos en vivo)
+    setInterval(_verifyBrandingIntegrity, 3500);
 });

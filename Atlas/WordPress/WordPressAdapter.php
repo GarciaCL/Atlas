@@ -66,14 +66,12 @@ class WordPressAdapter
             add_action('admin_menu', [$dashboard, 'registerMenu']);
         }
 
-        // Inicializamos la sincronización automática de contenido en local
+        // Sincronización automática de contenido local
         $documentRepo = new WordPressDocumentRepository();
         $contentService = new ContentService($documentRepo);
         $wpProvider = new WordPressProvider();
         
         $syncHandler = new ContentSyncHandler($contentService, $wpProvider);
-        
-        // Escuchamos cuando un post se crea o actualiza
         add_action('save_post', [$syncHandler, 'handleSavePost'], 10, 3);
     }
 
@@ -83,18 +81,17 @@ class WordPressAdapter
      */
     public function enqueueChatAssets(): void
     {
-        // Encolar de manera segura chat.js buscando la raíz relativa del plugin
-        $js_url = plugins_url('atlas/wordpress/Assets/chat.js', dirname(__FILE__, 2));
+        // Encolar assets de forma segura en local
+        $js_url = plugins_url('/atlas/wordpress/Assets/chat.js', dirname(__FILE__, 2));
 
         wp_enqueue_script(
             'atlas-chat-js', 
             $js_url, 
             ['jquery'], 
-            '2.2', // Incrementamos versión para romper la caché del navegador en local
+            '2.6', // Nueva versión para forzar refresco total en la caché local
             true
         );
 
-        // Obtener información del usuario logueado actualmente en WordPress
         $current_user = wp_get_current_user();
         $user_name = '';
 
@@ -102,7 +99,7 @@ class WordPressAdapter
             $user_name = $current_user->first_name ?: $current_user->display_name;
         }
 
-        // Preparar los botones de fallback (emergencia) dinámicamente con sus URLs
+        // Preparar los botones de fallback (emergencia) dinámicamente
         $fallbackActionIds = get_option('atlas_chat_fallback_actions', []);
         $globalActions = get_option('atlas_global_actions', []);
         $fallbackButtons = [];
@@ -134,13 +131,13 @@ class WordPressAdapter
             }
         }
 
-        // Inyectar las configuraciones dinámicas incluyendo restUrl con puerto
+        // Inyectar configuraciones dinámicas al frontend local
         wp_localize_script('atlas-chat-js', 'AtlasConfig', [
             'restUrl' => esc_url_raw(rest_url()),
             'userName' => $user_name,
             'titleText' => get_option('atlas_chat_title_text', 'Asistente Atlas'),
-            'headerLogo' => get_option('atlas_chat_header_logo', ''), // ◄ NUEVO: Logo de cabecera de la empresa
-            'showTitle' => get_option('atlas_chat_show_title', 'yes'), // ◄ NUEVO: Visibilidad del título
+            'headerLogo' => get_option('atlas_chat_header_logo', ''), 
+            'showTitle' => get_option('atlas_chat_show_title', 'yes'), 
             'headerBg' => get_option('atlas_chat_header_bg', '#007cba'),
             'headerTextColor' => get_option('atlas_chat_header_text_color', '#ffffff'),
             'fallbackButtons' => $fallbackButtons
@@ -148,7 +145,7 @@ class WordPressAdapter
     }
 
     /**
-     * Imprime el contenedor HTML del chat en el pie de página del sitio en local.
+     * Imprime el contenedor HTML del chat en el pie de página del sitio con marca de atribución.
      */
     public function renderChatWidgetHtml(): void
     {
@@ -162,10 +159,16 @@ class WordPressAdapter
         <script src="https://unpkg.com/lucide@latest"></script>
 
         <style>
-            #atlas-chat-toggle {
+            #atlas-chat-toggle-wrapper {
                 position: fixed;
                 bottom: 20px;
                 right: 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                z-index: 999999;
+            }
+            #atlas-chat-toggle {
                 width: 60px;
                 height: 60px;
                 background-color: <?php echo esc_attr($chatColor); ?>;
@@ -176,11 +179,23 @@ class WordPressAdapter
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
-                z-index: 999999;
                 transition: transform 0.2s;
             }
             #atlas-chat-toggle:hover {
                 transform: scale(1.05);
+            }
+            .atlas-branding-link {
+                font-size: 9px;
+                color: #888;
+                text-decoration: none;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                margin-top: 5px;
+                text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+                font-weight: 600;
+            }
+            .atlas-branding-link:hover {
+                color: #333;
+                text-decoration: underline;
             }
             #atlas-chat-widget {
                 position: fixed;
@@ -238,13 +253,17 @@ class WordPressAdapter
             }
         </style>
 
-        <!-- Botón Flotante para abrir/cerrar -->
-        <div id="atlas-chat-toggle">
-            <?php if (filter_var($chatIcon, FILTER_VALIDATE_URL) || str_starts_with($chatIcon, '/')): ?>
-                <img src="<?php echo esc_url($chatIcon); ?>" style="width: 26px; height: 26px; object-fit: contain;" />
-            <?php else: ?>
-                <i data-lucide="<?php echo esc_attr($chatIcon); ?>" style="width: 26px; height: 26px;"></i>
-            <?php endif; ?>
+        <!-- Botón Flotante para abrir/cerrar con Marca de Creactiva Web -->
+        <div id="atlas-chat-toggle-wrapper">
+            <div id="atlas-chat-toggle">
+                <?php if (filter_var($chatIcon, FILTER_VALIDATE_URL) || str_starts_with($chatIcon, '/')): ?>
+                    <img src="<?php echo esc_url($chatIcon); ?>" style="width: 26px; height: 26px; object-fit: contain;" />
+                <?php else: ?>
+                    <i data-lucide="<?php echo esc_attr($chatIcon); ?>" style="width: 26px; height: 26px;"></i>
+                <?php endif; ?>
+            </div>
+            <!-- Enlace de marca externa obligado (Bajo control de chat.js) -->
+            <a href="https://creactivaweb.cl" target="_blank" class="atlas-branding-link">creado por creactivaweb.cl</a>
         </div>
 
         <!-- Ventana del Chat -->
@@ -254,10 +273,15 @@ class WordPressAdapter
             </div>
             <div class="atlas-chat-messages-container"></div>
             <div class="atlas-chat-input-container">
-                <input type="text" class="atlas-chat-input-field" placeholder="Escribe tu mensaje aquí..." value="" />
+                <input type="text" class="atlas-chat-input-field" placeholder="Pregúntame algo..." value="" />
                 <button class="atlas-chat-send-btn">
                     <i data-lucide="send" style="width: 18px; height: 18px;"></i>
                 </button>
+            </div>
+            
+            <!-- Marca de agua fija interna del chatbox (Bajo control de chat.js) -->
+            <div class="atlas-widget-branding-container" style="text-align: center; padding: 6px; font-size: 9px; background: #fafafa; border-top: 1px solid #eee; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                Creado por <a href="https://creactivaweb.cl" target="_blank" class="atlas-branding-link-inner" style="color: #007cba; text-decoration: none; font-weight: bold;">creactivaweb.cl</a>
             </div>
         </div>
 
