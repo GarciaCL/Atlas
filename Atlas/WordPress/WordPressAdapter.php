@@ -84,7 +84,7 @@ class WordPressAdapter
     public function enqueueChatAssets(): void
     {
         // Encolar de manera segura chat.js buscando la raíz relativa del plugin
-        $js_url = plugins_url('/atlas/wordpress/Assets/chat.js', dirname(__FILE__, 2));
+        $js_url = plugins_url('atlas/wordpress/Assets/chat.js', dirname(__FILE__, 2));
 
         wp_enqueue_script(
             'atlas-chat-js', 
@@ -134,11 +134,13 @@ class WordPressAdapter
             }
         }
 
-        // Inyectar las configuraciones dinámicas incluyendo restUrl con puerto local (:10095)
+        // Inyectar las configuraciones dinámicas incluyendo restUrl con puerto
         wp_localize_script('atlas-chat-js', 'AtlasConfig', [
             'restUrl' => esc_url_raw(rest_url()),
             'userName' => $user_name,
             'titleText' => get_option('atlas_chat_title_text', 'Asistente Atlas'),
+            'headerLogo' => get_option('atlas_chat_header_logo', ''), // ◄ NUEVO: Logo de cabecera de la empresa
+            'showTitle' => get_option('atlas_chat_show_title', 'yes'), // ◄ NUEVO: Visibilidad del título
             'headerBg' => get_option('atlas_chat_header_bg', '#007cba'),
             'headerTextColor' => get_option('atlas_chat_header_text_color', '#ffffff'),
             'fallbackButtons' => $fallbackButtons

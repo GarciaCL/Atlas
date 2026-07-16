@@ -21,7 +21,7 @@ class AdminDashboardController
             'manage_options',
             'atlas-kos',
             [$this, 'renderDashboard'],
-            'dashicons-brain',
+            'dashicons-admin-site',
             25
         );
 
@@ -100,6 +100,11 @@ class AdminDashboardController
         $chatColor = get_option('atlas_chat_color', '#007cba');
         $chatIconColor = get_option('atlas_chat_icon_color', '#ffffff');
         $chatIcon = get_option('atlas_chat_icon', 'message-square');
+        $chatTitleText = get_option('atlas_chat_title_text', 'Asistente Atlas');
+        $chatHeaderBg = get_option('atlas_chat_header_bg', '#007cba');
+        $chatHeaderTextColor = get_option('atlas_chat_header_text_color', '#ffffff');
+        $chatHeaderLogo = get_option('atlas_chat_header_logo', ''); // ◄ NUEVO
+        $chatShowTitle = get_option('atlas_chat_show_title', 'yes'); // ◄ NUEVO
         $globalActions = get_option('atlas_global_actions', []);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_admin_referer('atlas_settings_nonce_action', 'atlas_settings_nonce')) {
@@ -109,9 +114,21 @@ class AdminDashboardController
                 update_option('atlas_chat_color', sanitize_hex_color($_POST['atlas_chat_color']));
                 update_option('atlas_chat_icon_color', sanitize_hex_color($_POST['atlas_chat_icon_color']));
                 update_option('atlas_chat_icon', sanitize_text_field($_POST['atlas_chat_icon']));
+                update_option('atlas_chat_title_text', sanitize_text_field($_POST['atlas_chat_title_text']));
+                update_option('atlas_chat_header_bg', sanitize_hex_color($_POST['atlas_chat_header_bg']));
+                update_option('atlas_chat_header_text_color', sanitize_hex_color($_POST['atlas_chat_header_text_color']));
+                update_option('atlas_chat_header_logo', sanitize_text_field($_POST['atlas_chat_header_logo'])); // ◄ NUEVO
+                update_option('atlas_chat_show_title', sanitize_text_field($_POST['atlas_chat_show_title'])); // ◄ NUEVO
+                
                 $chatColor = sanitize_hex_color($_POST['atlas_chat_color']);
                 $chatIconColor = sanitize_hex_color($_POST['atlas_chat_icon_color']);
                 $chatIcon = sanitize_text_field($_POST['atlas_chat_icon']);
+                $chatTitleText = sanitize_text_field($_POST['atlas_chat_title_text']);
+                $chatHeaderBg = sanitize_hex_color($_POST['atlas_chat_header_bg']);
+                $chatHeaderTextColor = sanitize_hex_color($_POST['atlas_chat_header_text_color']);
+                $chatHeaderLogo = sanitize_text_field($_POST['atlas_chat_header_logo']); // ◄ NUEVO
+                $chatShowTitle = sanitize_text_field($_POST['atlas_chat_show_title']); // ◄ NUEVO
+                
                 echo '<div class="notice notice-success is-dismissible"><p>Estilo general del chat actualizado correctamente.</p></div>';
             }
 
@@ -212,6 +229,33 @@ class AdminDashboardController
                     <h3 style="margin-top:0; border-bottom: 1px solid #eee; padding-bottom: 10px; font-weight: 700;">🎨 Burbuja de Chat</h3>
                     <form method="post" action="">
                         <?php wp_nonce_field('atlas_settings_nonce_action', 'atlas_settings_nonce'); ?>
+                        
+                        <!-- Ajustes de Título combinados -->
+                        <p style="margin-bottom: 15px;">
+                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Título de Cabecera:</label>
+                            <input type="text" name="atlas_chat_title_text" value="<?php echo esc_attr($chatTitleText); ?>" style="width:100%; padding: 6px;" placeholder="Ej: Soporte Atlas">
+                        </p>
+
+                        <p style="margin-bottom: 15px;">
+                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Mostrar Título:</label>
+                            <select name="atlas_chat_show_title" style="width:100%;">
+                                <option value="yes" <?php selected($chatShowTitle, 'yes'); ?>>Sí, mostrar texto</option>
+                                <option value="no" <?php selected($chatShowTitle, 'no'); ?>>No, ocultar texto</option>
+                            </select>
+                        </p>
+
+                        <!-- Subida de Logo Corporativo para Cabecera -->
+                        <p style="margin-bottom: 15px;">
+                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Logotipo de Cabecera:</label>
+                            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                                <input type="text" id="atlas_chat_header_logo" name="atlas_chat_header_logo" value="<?php echo esc_attr($chatHeaderLogo); ?>" style="flex:1; padding: 6px;" placeholder="URL del logotipo">
+                                <button type="button" class="button atlas-upload-button" data-target="atlas_chat_header_logo">Subir Logo</button>
+                            </div>
+                            <span class="description" style="font-size:11px; display:block; line-height: 1.4;">
+                                💡 Sube el imagotipo de tu empresa para que aparezca al lado del título en el chat.
+                            </span>
+                        </p>
+
                         <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                             <p style="margin: 0; flex: 1;">
                                 <label style="font-weight:bold; display:block; margin-bottom:5px;">Color de Identidad:</label>
@@ -222,6 +266,17 @@ class AdminDashboardController
                                 <input type="color" name="atlas_chat_icon_color" value="<?php echo esc_attr($chatIconColor); ?>" style="width: 50px; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
                             </p>
                         </div>
+                        
+                        <p style="margin-bottom: 15px;">
+                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Color de Fondo Cabecera:</label>
+                            <input type="color" name="atlas_chat_header_bg" value="<?php echo esc_attr($chatHeaderBg); ?>" style="width: 50px; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
+                        </p>
+
+                        <p style="margin-bottom: 15px;">
+                            <label style="font-weight:bold; display:block; margin-bottom:5px;">Color de Texto de Cabecera:</label>
+                            <input type="color" name="atlas_chat_header_text_color" value="<?php echo esc_attr($chatHeaderTextColor); ?>" style="width: 50px; height: 35px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc;">
+                        </p>
+
                         <p style="margin-bottom: 15px;">
                             <label style="font-weight:bold; display:block; margin-bottom:5px;">Icono de la Burbuja:</label>
                             <div style="display: flex; gap: 5px; margin-bottom: 5px;">

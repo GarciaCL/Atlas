@@ -21,16 +21,71 @@ document.addEventListener("DOMContentLoaded", function () {
     if (chatHeader) {
         chatHeader.style.backgroundColor = headerBg;
         chatHeader.style.color = headerTextColor;
-        let titleElement = chatHeader.querySelector("h3") || chatHeader.querySelector(".atlas-chat-title");
-        if (!titleElement) {
-            titleElement = document.createElement("h3");
-            titleElement.style.margin = "0";
-            titleElement.style.fontSize = "16px";
-            titleElement.style.fontWeight = "bold";
-            chatHeader.appendChild(titleElement);
+        chatHeader.style.display = "flex";
+        chatHeader.style.alignItems = "center";
+        chatHeader.style.justifyContent = "space-between";
+        chatHeader.style.padding = "10px 15px";
+        chatHeader.style.boxSizing = "border-box";
+
+        // Contenedor de Identidad (Logo + Texto)
+        const brandContainer = document.createElement("div");
+        brandContainer.style.display = "flex";
+        brandContainer.style.alignItems = "center";
+        brandContainer.style.gap = "8px";
+
+        // 1. Renderizar Logo de Empresa si existe
+        const headerLogo = window.AtlasConfig?.headerLogo || "";
+        if (headerLogo) {
+            const logoImg = document.createElement("img");
+            logoImg.src = headerLogo;
+            logoImg.style.width = "24px";
+            logoImg.style.height = "24px";
+            logoImg.style.borderRadius = "4px";
+            logoImg.style.objectFit = "contain";
+            brandContainer.appendChild(logoImg);
         }
-        titleElement.textContent = titleText;
-        titleElement.style.color = headerTextColor;
+
+        // 2. Renderizar Título si está activo
+        const showTitle = window.AtlasConfig?.showTitle !== "no";
+        if (showTitle) {
+            const titleElement = document.createElement("h3");
+            titleElement.style.margin = "0";
+            titleElement.style.fontSize = "15px";
+            titleElement.style.fontWeight = "bold";
+            titleElement.style.color = headerTextColor;
+            titleElement.textContent = titleText;
+            brandContainer.appendChild(titleElement);
+        }
+
+        // Limpiar cabecera e inyectar marca
+        chatHeader.innerHTML = "";
+        chatHeader.appendChild(brandContainer);
+
+        // 3. Renderizar Botón de Minimizar
+        const minimizeBtn = document.createElement("button");
+        minimizeBtn.id = "atlas-chat-minimize";
+        minimizeBtn.style.background = "none";
+        minimizeBtn.style.border = "none";
+        minimizeBtn.style.color = headerTextColor;
+        minimizeBtn.style.cursor = "pointer";
+        minimizeBtn.style.display = "flex";
+        minimizeBtn.style.alignItems = "center";
+        minimizeBtn.style.padding = "4px";
+        minimizeBtn.innerHTML = `<i data-lucide="minus" style="width: 18px; height: 18px;"></i>`;
+        chatHeader.appendChild(minimizeBtn);
+
+        // Evento para cerrar/minimizar el chat
+        minimizeBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (chatWidget) {
+                chatWidget.classList.remove("active", "open");
+                chatWidget.style.display = "none";
+            }
+        });
+
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     }
 
     // Inyectar animación CSS para los tres puntos suspensivos ("Pensando")
